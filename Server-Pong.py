@@ -61,11 +61,13 @@ def move_ball():
     if ball_y <= 0 or ball_y >= SCREEN_HEIGHT - BALL_SIZE:
         ball_dy = -ball_dy
 
+    # Check collision with paddles and adjust ball direction
     if ball_x <= PADDLE_WIDTH and paddle1_y < ball_y < paddle1_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
     if ball_x >= SCREEN_WIDTH - PADDLE_WIDTH - BALL_SIZE and paddle2_y < ball_y < paddle2_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
 
+    # Check if ball goes out of bounds and update score
     if ball_x <= 0:
         score2 += 1
         reset_ball()
@@ -101,6 +103,7 @@ def ai_move_paddle():
         paddle1_y += PADDLE_SPEED
     elif ball_y < paddle1_y + PADDLE_HEIGHT // 2:
         paddle1_y -= PADDLE_SPEED
+    # Ensure the paddle can move fully up and down
     paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
 
 def increase_difficulty():
@@ -146,7 +149,7 @@ def handle_client(client_socket):
             # Receive updated paddle position from client
             data = client_socket.recv(1024).decode('utf-8')
             if data:
-                paddle2_y = int(data)
+                paddle2_y = int(float(data))  # Properly handle the float value
 
                 # Ensure the player's paddle can move all the way to the bottom
                 paddle2_y = max(0, min(paddle2_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
