@@ -52,48 +52,61 @@ def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
     client_connected = True
 
-    # Initial handshake
-    client_socket.send("READY".encode('utf-8'))
-    client_ack = client_socket.recv(1024).decode('utf-8')
-    if client_ack == "ACK":
-        print("Client acknowledged, starting game...")
-    else:
-        print("Client did not acknowledge properly.")
-        return
+    client_socket.settimeout(10)  # Increase the server-side timeout to 10 seconds
 
-    # Wait for the client to confirm it's ready to start
-    time.sleep(1)
-    client_socket.send("START".encode('utf-8'))
-    start_ack = client_socket.recv(1024).decode('utf-8')
-    if start_ack == "START_ACK":
-        print("Client is ready. Game is starting...")
-    else:
-        print("Client did not respond to start signal.")
-        return
+    try:
+        # Initial handshake
+        client_socket.send("READY".encode('utf-8'))
+        client_ack = client_socket.recv(1024).decode('utf-8')
+        if client_ack == "ACK":
+            print("Client acknowledged, starting game...")
+        else:
+            print("Client did not acknowledge properly.")
+            return
 
-    while True:
-        try:
-            # Move the ball
-            move_ball()
+        # Wait for the client to confirm it's ready to start
+        time.sleep(1)
+        client_socket.send("START".encode('utf-8'))
+        start_ack = client_socket.recv(1024).decode('utf-8')
+        if start_ack == "START_ACK":
+            print("Client is ready. Game is starting...")
+        else:
+            print("Client did not respond to start signal.")
+            return
 
-            # Send ball position, paddle1 position, and scores to client
-            send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
-            print(f"Sending data to client: {send_data}")  # Debugging output
-            client_socket.send(send_data.encode('utf-8'))
+        while True:
+            try:
+                # Move the ball
+                move_ball()
 
-            server_ack = client_socket.recv(1024).decode('utf-8')
-            if server_ack != "ACK":
-                print("Failed to receive acknowledgment from client.")
+                # Send ball position, paddle1 position, and scores to client
+                send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
+                print(f"Sending data to client: {send_data}")
+                client_socket.send(send_data.encode('utf-8'))
 
-            # Receive updated paddle position from client
-            data = client_socket.recv(1024).decode('utf-8')
-            if data:
-                print(f"Received data from client: {data}")  # Debugging output
-                paddle2_y = int(data)
-                client_socket.send("ACK".encode('utf-8'))  # Acknowledge receipt of data
-        except Exception as e:
-            print(f"Error during communication with client: {e}")
-            break
+                server_ack = client_socket.recv(1024).decode('utf-8')
+                if server_ack != "ACK":
+                    print("Failed to receive acknowledgment from client.")
+                    break  # Exit the loop if the acknowledgment fails
+
+                # Receive updated paddle position from client
+                data = client_socket.recv(1024).decode('utf-8')
+                if data:
+                    print(f"Received data from client: {data}")
+                    paddle2_y = int(data)
+                    client_socket.send("ACK".encode('utf-8'))  # Acknowledge receipt of data
+            except socket.timeout:
+                print("Connection to client timed out.")
+                break
+            except Exception as e:
+                print(f"Error during communication with client: {e}")
+                break
+
+    except Exception as e:
+        print(f"An error occurred during the initial handshake: {e}")
+
+    client_socket.close()
+    print("Client connection closed.")
 
 def move_ball():
     global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y, score1, score2
