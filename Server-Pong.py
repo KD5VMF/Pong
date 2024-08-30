@@ -4,9 +4,12 @@ import pygame
 import random
 import time
 
+# Pygame Initialization
+pygame.init()  # Ensure this is called before any display-related functions
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)  # Fullscreen mode
+SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()  # Get the current screen size
+
 # Game Settings
-SCREEN_WIDTH = pygame.display.Info().current_w
-SCREEN_HEIGHT = pygame.display.Info().current_h
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
@@ -14,9 +17,6 @@ PADDLE_SPEED = 10
 BALL_SPEED_X = 5
 BALL_SPEED_Y = 5
 
-# Pygame Initialization
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Pong - Server")
 
 # Paddle and Ball Positions
@@ -37,7 +37,6 @@ SERVER_PORT = 12345
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # Doesn't even have to be reachable
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
     except Exception:
