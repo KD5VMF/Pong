@@ -63,6 +63,7 @@ def handle_client(client_socket):
     client_connected = True
     show_ready_screen("Player Connected! Ready to Start...")
     time.sleep(2)  # brief delay before game starts
+    client_socket.send("READY".encode('utf-8'))  # Signal to player that the game is starting
     while True:
         try:
             # Receive paddle position from client
