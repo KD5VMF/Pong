@@ -73,24 +73,27 @@ def handle_client(client_socket):
 
     while True:
         try:
-            # Receive paddle position from client
-            data = client_socket.recv(1024).decode('utf-8')
-            if data:
-                paddle2_y = int(data)
-                client_socket.send("ACK".encode('utf-8'))  # Acknowledge receipt of data
-        except Exception as e:
-            print(f"Error receiving data from client: {e}")
-            break
-
-        # Send ball position, paddle1 position, and scores to client
-        send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
-        try:
+            # Send ball position, paddle1 position, and scores to client
+            send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
+            print(f"Sending data to client: {send_data}")  # Debugging output
             client_socket.send(send_data.encode('utf-8'))
+
             server_ack = client_socket.recv(1024).decode('utf-8')
             if server_ack != "ACK":
                 print("Failed to receive acknowledgment from client.")
         except Exception as e:
-            print(f"Error sending data to client: {e}")
+            print(f"Error during communication with client: {e}")
+            break
+
+        try:
+            # Receive paddle position from client
+            data = client_socket.recv(1024).decode('utf-8')
+            if data:
+                print(f"Received data from client: {data}")  # Debugging output
+                paddle2_y = int(data)
+                client_socket.send("ACK".encode('utf-8'))  # Acknowledge receipt of data
+        except Exception as e:
+            print(f"Error receiving data from client: {e}")
             break
 
 def start_server():
