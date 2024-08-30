@@ -3,6 +3,7 @@ import threading
 import pygame
 import random
 import time
+import json
 
 # Pygame Initialization
 pygame.init()
@@ -36,6 +37,18 @@ SERVER_PORT = 12345
 BROADCAST_PORT = 12344
 BROADCAST_INTERVAL = 1  # in seconds
 client_connected = False
+
+# AI Learning Data
+learning_data = {
+    "paddle1_y": paddle1_y,
+    "paddle2_y": paddle2_y,
+    "ball_x": ball_x,
+    "ball_y": ball_y,
+    "ball_dx": ball_dx,
+    "ball_dy": ball_dy,
+    "score1": score1,
+    "score2": score2
+}
 
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -147,6 +160,21 @@ def show_ready_screen(message):
     screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
     pygame.display.flip()
 
+def ai_move_paddle():
+    global paddle1_y, ball_x, ball_y, learning_data
+    if ball_y > paddle1_y + PADDLE_HEIGHT // 2:
+        paddle1_y += PADDLE_SPEED
+    elif ball_y < paddle1_y + PADDLE_HEIGHT // 2:
+        paddle1_y -= PADDLE_SPEED
+    paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+
+    # Save learning data
+    learning_data["paddle1_y"] = paddle1_y
+    learning_data["ball_x"] = ball_x
+    learning_data["ball_y"] = ball_y
+    with open("server_ai_learning.json", "w") as file:
+        json.dump(learning_data, file)
+
 def game_loop():
     global paddle1_y, client_connected
 
@@ -160,14 +188,7 @@ def game_loop():
                 return
 
         if client_connected:
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_UP]:
-                paddle1_y -= PADDLE_SPEED
-            if keys[pygame.K_DOWN]:
-                paddle1_y += PADDLE_SPEED
-
-            paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
-
+            ai_move_paddle()
             move_ball()
             draw_game()
         time.sleep(0.01)
