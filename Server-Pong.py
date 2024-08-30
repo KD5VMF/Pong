@@ -84,10 +84,14 @@ def handle_client(client_socket):
                 print(f"Sending data to client: {send_data}")
                 client_socket.send(send_data.encode('utf-8'))
 
-                server_ack = client_socket.recv(1024).decode('utf-8')
-                if server_ack != "ACK":
-                    print("Failed to receive acknowledgment from client.")
-                    break  # Exit the loop if the acknowledgment fails
+                try:
+                    server_ack = client_socket.recv(1024).decode('utf-8')
+                    if server_ack != "ACK":
+                        print("Failed to receive acknowledgment from client.")
+                        break  # Exit the loop if the acknowledgment fails
+                except socket.timeout:
+                    print("Timeout waiting for client's ACK.")
+                    break
 
                 # Receive updated paddle position from client
                 data = client_socket.recv(1024).decode('utf-8')
