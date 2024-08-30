@@ -144,6 +144,19 @@ def show_waiting_screen(message):
         screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2 + i * 50))
     pygame.display.flip()
 
+def start_server():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((SERVER_IP, SERVER_PORT))
+    server.listen(1)
+    show_waiting_screen(f"Waiting for Player to Connect...\nIP: {SERVER_IP}\nPort: {SERVER_PORT}")
+    print("Server listening on:", SERVER_IP, SERVER_PORT)
+
+    client_socket, addr = server.accept()
+    print(f"Connection established with {addr}")
+
+    client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+    client_handler.start()
+
 def game_loop():
     global paddle1_y, client_connected
 
