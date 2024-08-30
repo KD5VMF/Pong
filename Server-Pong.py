@@ -33,8 +33,6 @@ score2 = 0
 
 # Network Settings
 SERVER_PORT = 12345
-BROADCAST_PORT = 12344
-BROADCAST_INTERVAL = 1  # in seconds
 client_connected = False
 
 def get_ip_address():
@@ -49,14 +47,6 @@ def get_ip_address():
     return ip
 
 SERVER_IP = get_ip_address()
-
-def broadcast_server():
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        while not client_connected:
-            message = f"PONG_SERVER:{SERVER_IP}:{SERVER_PORT}"
-            s.sendto(message.encode('utf-8'), ('<broadcast>', BROADCAST_PORT))
-            time.sleep(BROADCAST_INTERVAL)
 
 def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
@@ -107,7 +97,7 @@ def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((SERVER_IP, SERVER_PORT))
     server.listen(1)
-    show_waiting_screen("Waiting for Player to Connect...")
+    show_waiting_screen(f"Waiting for Player to Connect...\nIP: {SERVER_IP}\nPort: {SERVER_PORT}")
     print("Server listening on:", SERVER_IP, SERVER_PORT)
 
     client_socket, addr = server.accept()
@@ -159,8 +149,10 @@ def draw_scoreboard():
 def show_waiting_screen(message):
     screen.fill((0, 0, 0))
     font = pygame.font.SysFont(None, 72)
-    text = font.render(message, True, (255, 255, 255))
-    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
+    lines = message.split('\n')
+    for i, line in enumerate(lines):
+        text = font.render(line, True, (255, 255, 255))
+        screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2 + i * 50))
     pygame.display.flip()
 
 def game_loop():
@@ -189,9 +181,6 @@ def game_loop():
         time.sleep(0.01)
 
 if __name__ == "__main__":
-    broadcast_thread = threading.Thread(target=broadcast_server, daemon=True)
-    broadcast_thread.start()
-
     server_thread = threading.Thread(target=start_server)
     server_thread.start()
 
