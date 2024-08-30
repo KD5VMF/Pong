@@ -52,8 +52,6 @@ def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
     client_connected = True
 
-    client_socket.settimeout(10)  # Increase the server-side timeout to 10 seconds
-
     try:
         # Initial handshake
         client_socket.send("READY".encode('utf-8'))
@@ -75,42 +73,28 @@ def handle_client(client_socket):
             return
 
         while True:
-            try:
-                # Move the ball
-                move_ball()
+            # Move the ball
+            move_ball()
 
-                # Send ball position, paddle1 position, and scores to client
-                send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
-                print(f"Sending data to client: {send_data}")
-                client_socket.send(send_data.encode('utf-8'))
+            # Send ball position, paddle1 position, and scores to client
+            send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
+            print(f"Sending data to client: {send_data}")
+            client_socket.send(send_data.encode('utf-8'))
 
-                try:
-                    server_ack = client_socket.recv(1024).decode('utf-8')
-                    if server_ack != "ACK":
-                        print("Failed to receive acknowledgment from client.")
-                        break  # Exit the loop if the acknowledgment fails
-                except socket.timeout:
-                    print("Timeout waiting for client's ACK.")
-                    break
+            # Receive updated paddle position from client
+            data = client_socket.recv(1024).decode('utf-8')
+            if data:
+                print(f"Received data from client: {data}")
+                paddle2_y = int(data)
 
-                # Receive updated paddle position from client
-                data = client_socket.recv(1024).decode('utf-8')
-                if data:
-                    print(f"Received data from client: {data}")
-                    paddle2_y = int(data)
-                    client_socket.send("ACK".encode('utf-8'))  # Acknowledge receipt of data
-            except socket.timeout:
-                print("Connection to client timed out.")
-                break
-            except Exception as e:
-                print(f"Error during communication with client: {e}")
-                break
+            # Always send acknowledgment after receiving data
+            client_socket.send("ACK".encode('utf-8'))
 
     except Exception as e:
-        print(f"An error occurred during the initial handshake: {e}")
-
-    client_socket.close()
-    print("Client connection closed.")
+        print(f"An error occurred: {e}")
+    finally:
+        client_socket.close()
+        print("Client connection closed.")
 
 def move_ball():
     global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y, score1, score2
@@ -171,8 +155,7 @@ def start_server():
     client_socket, addr = server.accept()
     print(f"Connection established with {addr}")
 
-    client_handler = threading.Thread(target=handle_client, args=(client_socket,))
-    client_handler.start()
+    handle_client(client_socket)
 
 def game_loop():
     global paddle1_y, client_connected
