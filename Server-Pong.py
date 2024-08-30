@@ -5,9 +5,9 @@ import random
 import time
 
 # Pygame Initialization
-pygame.init()  # Ensure this is called before any display-related functions
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)  # Fullscreen mode
-SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()  # Get the current screen size
+pygame.init()
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
 # Game Settings
 PADDLE_WIDTH = 15
@@ -33,6 +33,8 @@ score2 = 0
 
 # Network Settings
 SERVER_PORT = 12345
+BROADCAST_PORT = 12344
+BROADCAST_INTERVAL = 1  # in seconds
 
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -46,6 +48,14 @@ def get_ip_address():
     return ip
 
 SERVER_IP = get_ip_address()
+
+def broadcast_server():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        while True:
+            message = f"PONG_SERVER:{SERVER_IP}:{SERVER_PORT}"
+            s.sendto(message.encode('utf-8'), ('<broadcast>', BROADCAST_PORT))
+            time.sleep(BROADCAST_INTERVAL)
 
 def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2
@@ -83,17 +93,14 @@ def move_ball():
     ball_x += ball_dx
     ball_y += ball_dy
 
-    # Ball collision with top/bottom walls
     if ball_y <= 0 or ball_y >= SCREEN_HEIGHT - BALL_SIZE:
         ball_dy = -ball_dy
 
-    # Ball collision with paddles
     if ball_x <= PADDLE_WIDTH and paddle1_y < ball_y < paddle1_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
     if ball_x >= SCREEN_WIDTH - PADDLE_WIDTH - BALL_SIZE and paddle2_y < ball_y < paddle2_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
 
-    # Ball out of bounds (scoring)
     if ball_x <= 0:
         score2 += 1
         reset_ball()
@@ -142,6 +149,10 @@ def game_loop():
         time.sleep(0.01)
 
 if __name__ == "__main__":
+    broadcast_thread = threading.Thread(target=broadcast_server, daemon=True)
+    broadcast_thread.start()
+
     server_thread = threading.Thread(target=start_server)
     server_thread.start()
+
     game_loop()
