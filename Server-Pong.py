@@ -4,9 +4,9 @@ import pygame
 import random
 import time
 
-# Game Settings (as before)
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 480
+# Game Settings
+SCREEN_WIDTH = pygame.display.Info().current_w
+SCREEN_HEIGHT = pygame.display.Info().current_h
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
@@ -16,7 +16,7 @@ BALL_SPEED_Y = 5
 
 # Pygame Initialization
 pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Pong - Server")
 
 # Paddle and Ball Positions
@@ -27,21 +27,44 @@ ball_y = SCREEN_HEIGHT // 2
 ball_dx = BALL_SPEED_X
 ball_dy = BALL_SPEED_Y
 
+# Scores
+score1 = 0
+score2 = 0
+
 # Network Settings
-SERVER_IP = '0.0.0.0'  # Listen on all interfaces
 SERVER_PORT = 12345
 
-def handle_client(client_socket):
-    global paddle2_y, ball_x, ball_y, ball_dx, ball_dy
-    while True:
-        # Receive paddle position from client
-        data = client_socket.recv(1024).decode('utf-8')
-        if data:
-            paddle2_y = int(data)
+def get_ip_address():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Doesn't even have to be reachable
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
 
-        # Send ball position and paddle1 position to client
-        send_data = f"{ball_x},{ball_y},{paddle1_y}"
-        client_socket.send(send_data.encode('utf-8'))
+SERVER_IP = get_ip_address()
+
+def handle_client(client_socket):
+    global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2
+    while True:
+        try:
+            # Receive paddle position from client
+            data = client_socket.recv(1024).decode('utf-8')
+            if data:
+                paddle2_y = int(data)
+        except:
+            break
+
+        # Send ball position, paddle1 position, and scores to client
+        send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
+        try:
+            client_socket.send(send_data.encode('utf-8'))
+        except:
+            break
 
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -56,7 +79,7 @@ def start_server():
     client_handler.start()
 
 def move_ball():
-    global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y
+    global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y, score1, score2
 
     ball_x += ball_dx
     ball_y += ball_dy
@@ -72,17 +95,31 @@ def move_ball():
         ball_dx = -ball_dx
 
     # Ball out of bounds (scoring)
-    if ball_x <= 0 or ball_x >= SCREEN_WIDTH - BALL_SIZE:
-        ball_x, ball_y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2  # Reset ball position
-        ball_dx = random.choice([BALL_SPEED_X, -BALL_SPEED_X])
-        ball_dy = random.choice([BALL_SPEED_Y, -BALL_SPEED_Y])
+    if ball_x <= 0:
+        score2 += 1
+        reset_ball()
+    if ball_x >= SCREEN_WIDTH - BALL_SIZE:
+        score1 += 1
+        reset_ball()
+
+def reset_ball():
+    global ball_x, ball_y, ball_dx, ball_dy
+    ball_x, ball_y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+    ball_dx = random.choice([BALL_SPEED_X, -BALL_SPEED_X])
+    ball_dy = random.choice([BALL_SPEED_Y, -BALL_SPEED_Y])
 
 def draw_game():
     screen.fill((0, 0, 0))
     pygame.draw.rect(screen, (255, 255, 255), (0, paddle1_y, PADDLE_WIDTH, PADDLE_HEIGHT))
     pygame.draw.rect(screen, (255, 255, 255), (SCREEN_WIDTH - PADDLE_WIDTH, paddle2_y, PADDLE_WIDTH, PADDLE_HEIGHT))
     pygame.draw.circle(screen, (255, 255, 255), (ball_x, ball_y), BALL_SIZE // 2)
+    draw_scoreboard()
     pygame.display.flip()
+
+def draw_scoreboard():
+    font = pygame.font.SysFont(None, 48)
+    score_text = font.render(f"Server: {score1}  Player: {score2}", True, (255, 255, 255))
+    screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 20))
 
 def game_loop():
     global paddle1_y
