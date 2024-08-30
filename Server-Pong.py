@@ -136,6 +136,9 @@ def handle_client(client_socket):
                 print(f"Received data from client: {data}")
                 paddle2_y = int(data)
 
+                # Ensure the player's paddle can move all the way to the bottom
+                paddle2_y = max(0, min(paddle2_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+
             # Always send acknowledgment after receiving data
             client_socket.send("ACK".encode('utf-8'))
 
