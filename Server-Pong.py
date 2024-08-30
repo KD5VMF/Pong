@@ -1,4 +1,5 @@
 import socket
+import time
 
 # Network Settings
 SERVER_PORT = 12345
@@ -15,20 +16,19 @@ def start_server():
     print(f"Connection established with {addr}")
 
     try:
-        # Test Message Exchange
-        client_socket.send("TEST_MESSAGE_FROM_SERVER".encode('utf-8'))
-        print("Sent: TEST_MESSAGE_FROM_SERVER")
+        for i in range(10):  # Simulate 10 game updates
+            # Send paddle position and ball position
+            message = f"UPDATE_{i}_PADDLE1_POS,BALL_POS"
+            client_socket.send(message.encode('utf-8'))
+            print(f"Sent: {message}")
 
-        # Receive a message from the client
-        data = client_socket.recv(1024).decode('utf-8')
-        print(f"Received from client: {data}")
+            # Receive updated paddle position from client
+            data = client_socket.recv(1024).decode('utf-8')
+            print(f"Received from client: {data}")
+        
+        print("Extended message exchange successful!")
 
-        if data == "TEST_MESSAGE_FROM_CLIENT":
-            print("Message exchange successful!")
-        else:
-            print("Message exchange failed!")
-
-        # Test Latency
+        # Latency Test
         client_socket.send("PING".encode('utf-8'))
         print("Sent: PING")
 
