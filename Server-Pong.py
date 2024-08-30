@@ -105,6 +105,7 @@ def ai_move_paddle():
         paddle1_y -= PADDLE_SPEED
     # Ensure the paddle can move fully up and down
     paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+    print(f"Paddle1 Y Position: {paddle1_y}")  # Debugging info
 
 def increase_difficulty():
     global PADDLE_SPEED, BALL_SPEED_X, BALL_SPEED_Y, ai_reaction_time
@@ -153,6 +154,7 @@ def handle_client(client_socket):
 
                 # Ensure the player's paddle can move all the way to the bottom
                 paddle2_y = max(0, min(paddle2_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+                print(f"Paddle2 Y Position: {paddle2_y}")  # Debugging info
 
             # Always send acknowledgment after receiving data
             client_socket.send("ACK".encode('utf-8'))
