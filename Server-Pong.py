@@ -13,13 +13,13 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
-PADDLE_SPEED = 10
-BALL_SPEED_X = 5
-BALL_SPEED_Y = 5
+PADDLE_SPEED = 20  # Increased paddle speed
+BALL_SPEED_X = 10  # Increased ball speed
+BALL_SPEED_Y = 10  # Increased ball speed
 
 # Difficulty Scaling
-difficulty_increment = 0.5  # Speed increase per level
-ai_reaction_time = 0.01  # Time delay for AI to "think"
+difficulty_increment = 1.0  # Faster speed increase per level
+ai_reaction_time = 0.005  # Reduced AI reaction time for faster response
 
 pygame.display.set_caption("Pong - Server")
 
@@ -111,7 +111,7 @@ def increase_difficulty():
     PADDLE_SPEED += difficulty_increment
     BALL_SPEED_X += difficulty_increment
     BALL_SPEED_Y += difficulty_increment
-    ai_reaction_time = max(0.005, ai_reaction_time - 0.001)  # Faster AI reaction with a limit
+    ai_reaction_time = max(0.002, ai_reaction_time - 0.001)  # Faster AI reaction with a limit
 
 def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
@@ -201,7 +201,7 @@ def game_loop():
 
         if client_connected:
             draw_game()
-        time.sleep(0.01)
+        time.sleep(0.005)  # Reduced delay for faster game loop
 
 if __name__ == "__main__":
     server_thread = threading.Thread(target=start_server)
