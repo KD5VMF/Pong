@@ -48,54 +48,6 @@ def get_ip_address():
 
 SERVER_IP = get_ip_address()
 
-def handle_client(client_socket):
-    global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
-    client_connected = True
-
-    try:
-        # Initial handshake
-        client_socket.send("READY".encode('utf-8'))
-        client_ack = client_socket.recv(1024).decode('utf-8')
-        if client_ack == "ACK":
-            print("Client acknowledged, starting game...")
-        else:
-            print("Client did not acknowledge properly.")
-            return
-
-        # Wait for the client to confirm it's ready to start
-        time.sleep(1)
-        client_socket.send("START".encode('utf-8'))
-        start_ack = client_socket.recv(1024).decode('utf-8')
-        if start_ack == "START_ACK":
-            print("Client is ready. Game is starting...")
-        else:
-            print("Client did not respond to start signal.")
-            return
-
-        while True:
-            # Move the ball
-            move_ball()
-
-            # Send ball position, paddle1 position, and scores to client
-            send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
-            print(f"Sending data to client: {send_data}")
-            client_socket.send(send_data.encode('utf-8'))
-
-            # Receive updated paddle position from client
-            data = client_socket.recv(1024).decode('utf-8')
-            if data:
-                print(f"Received data from client: {data}")
-                paddle2_y = int(data)
-
-            # Always send acknowledgment after receiving data
-            client_socket.send("ACK".encode('utf-8'))
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        client_socket.close()
-        print("Client connection closed.")
-
 def move_ball():
     global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y, score1, score2
 
@@ -136,6 +88,66 @@ def draw_scoreboard():
     score_text = font.render(f"Server: {score1}  Player: {score2}", True, (255, 255, 255))
     screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 20))
 
+def ai_move_paddle():
+    global paddle1_y, ball_y
+    if ball_y > paddle1_y + PADDLE_HEIGHT // 2:
+        paddle1_y += PADDLE_SPEED
+    elif ball_y < paddle1_y + PADDLE_HEIGHT // 2:
+        paddle1_y -= PADDLE_SPEED
+    paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+
+def handle_client(client_socket):
+    global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
+    client_connected = True
+
+    try:
+        # Initial handshake
+        client_socket.send("READY".encode('utf-8'))
+        client_ack = client_socket.recv(1024).decode('utf-8')
+        if client_ack == "ACK":
+            print("Client acknowledged, starting game...")
+        else:
+            print("Client did not acknowledge properly.")
+            return
+
+        # Wait for the client to confirm it's ready to start
+        time.sleep(1)
+        client_socket.send("START".encode('utf-8'))
+        start_ack = client_socket.recv(1024).decode('utf-8')
+        if start_ack == "START_ACK":
+            print("Client is ready. Game is starting...")
+        else:
+            print("Client did not respond to start signal.")
+            return
+
+        while True:
+            # Move the ball and server paddle
+            move_ball()
+            ai_move_paddle()
+
+            # Send ball position, paddle1 position, and scores to client
+            send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
+            print(f"Sending data to client: {send_data}")
+            client_socket.send(send_data.encode('utf-8'))
+
+            # Receive updated paddle position from client
+            data = client_socket.recv(1024).decode('utf-8')
+            if data:
+                print(f"Received data from client: {data}")
+                paddle2_y = int(data)
+
+            # Always send acknowledgment after receiving data
+            client_socket.send("ACK".encode('utf-8'))
+
+            # Draw the game screen
+            draw_game()
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        client_socket.close()
+        print("Client connection closed.")
+
 def show_waiting_screen(message):
     screen.fill((0, 0, 0))
     font = pygame.font.SysFont(None, 72)
@@ -158,7 +170,7 @@ def start_server():
     handle_client(client_socket)
 
 def game_loop():
-    global paddle1_y, client_connected
+    global client_connected
 
     while True:
         for event in pygame.event.get():
@@ -170,14 +182,6 @@ def game_loop():
                 return
 
         if client_connected:
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_UP]:
-                paddle1_y -= PADDLE_SPEED
-            if keys[pygame.K_DOWN]:
-                paddle1_y += PADDLE_SPEED
-
-            paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
-
             draw_game()
         time.sleep(0.01)
 
