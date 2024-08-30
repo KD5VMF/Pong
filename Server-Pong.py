@@ -35,6 +35,7 @@ score2 = 0
 SERVER_PORT = 12345
 BROADCAST_PORT = 12344
 BROADCAST_INTERVAL = 1  # in seconds
+client_connected = False
 
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -52,13 +53,16 @@ SERVER_IP = get_ip_address()
 def broadcast_server():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        while True:
+        while not client_connected:
             message = f"PONG_SERVER:{SERVER_IP}:{SERVER_PORT}"
             s.sendto(message.encode('utf-8'), ('<broadcast>', BROADCAST_PORT))
             time.sleep(BROADCAST_INTERVAL)
 
 def handle_client(client_socket):
-    global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2
+    global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
+    client_connected = True
+    show_ready_screen("Player Connected! Ready to Start...")
+    time.sleep(2)  # brief delay before game starts
     while True:
         try:
             # Receive paddle position from client
@@ -79,6 +83,7 @@ def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((SERVER_IP, SERVER_PORT))
     server.listen(1)
+    show_waiting_screen("Waiting for Player to Connect...")
     print("Server listening on:", SERVER_IP, SERVER_PORT)
 
     client_socket, addr = server.accept()
@@ -127,25 +132,43 @@ def draw_scoreboard():
     score_text = font.render(f"Server: {score1}  Player: {score2}", True, (255, 255, 255))
     screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 20))
 
+def show_waiting_screen(message):
+    screen.fill((0, 0, 0))
+    font = pygame.font.SysFont(None, 72)
+    text = font.render(message, True, (255, 255, 255))
+    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
+    pygame.display.flip()
+
+def show_ready_screen(message):
+    screen.fill((0, 0, 0))
+    font = pygame.font.SysFont(None, 72)
+    text = font.render(message, True, (255, 255, 255))
+    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
+    pygame.display.flip()
+
 def game_loop():
-    global paddle1_y
+    global paddle1_y, client_connected
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F8:
+                pygame.quit()
+                return
 
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP]:
-            paddle1_y -= PADDLE_SPEED
-        if keys[pygame.K_DOWN]:
-            paddle1_y += PADDLE_SPEED
+        if client_connected:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_UP]:
+                paddle1_y -= PADDLE_SPEED
+            if keys[pygame.K_DOWN]:
+                paddle1_y += PADDLE_SPEED
 
-        paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+            paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
 
-        move_ball()
-        draw_game()
+            move_ball()
+            draw_game()
         time.sleep(0.01)
 
 if __name__ == "__main__":
