@@ -17,6 +17,10 @@ PADDLE_SPEED = 10
 BALL_SPEED_X = 5
 BALL_SPEED_Y = 5
 
+# Difficulty Scaling
+difficulty_increment = 0.5  # Speed increase per level
+ai_reaction_time = 0.01  # Time delay for AI to "think"
+
 pygame.display.set_caption("Pong - Server")
 
 # Paddle and Ball Positions
@@ -65,9 +69,11 @@ def move_ball():
     if ball_x <= 0:
         score2 += 1
         reset_ball()
+        increase_difficulty()
     if ball_x >= SCREEN_WIDTH - BALL_SIZE:
         score1 += 1
         reset_ball()
+        increase_difficulty()
 
 def reset_ball():
     global ball_x, ball_y, ball_dx, ball_dy
@@ -90,11 +96,19 @@ def draw_scoreboard():
 
 def ai_move_paddle():
     global paddle1_y, ball_y
+    time.sleep(ai_reaction_time)  # Simulate AI reaction time
     if ball_y > paddle1_y + PADDLE_HEIGHT // 2:
         paddle1_y += PADDLE_SPEED
     elif ball_y < paddle1_y + PADDLE_HEIGHT // 2:
         paddle1_y -= PADDLE_SPEED
     paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+
+def increase_difficulty():
+    global PADDLE_SPEED, BALL_SPEED_X, BALL_SPEED_Y, ai_reaction_time
+    PADDLE_SPEED += difficulty_increment
+    BALL_SPEED_X += difficulty_increment
+    BALL_SPEED_Y += difficulty_increment
+    ai_reaction_time = max(0.005, ai_reaction_time - 0.001)  # Faster AI reaction with a limit
 
 def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
@@ -127,13 +141,11 @@ def handle_client(client_socket):
 
             # Send ball position, paddle1 position, and scores to client
             send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
-            print(f"Sending data to client: {send_data}")
             client_socket.send(send_data.encode('utf-8'))
 
             # Receive updated paddle position from client
             data = client_socket.recv(1024).decode('utf-8')
             if data:
-                print(f"Received data from client: {data}")
                 paddle2_y = int(data)
 
                 # Ensure the player's paddle can move all the way to the bottom
