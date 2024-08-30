@@ -71,6 +71,9 @@ def handle_client(client_socket):
         print("Client did not acknowledge properly.")
         return
 
+    # Wait a moment to ensure both sides are ready
+    time.sleep(1)
+
     while True:
         try:
             # Receive paddle position from client
