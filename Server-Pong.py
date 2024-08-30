@@ -3,7 +3,6 @@ import threading
 import pygame
 import random
 import time
-import json
 
 # Pygame Initialization
 pygame.init()
@@ -38,18 +37,6 @@ BROADCAST_PORT = 12344
 BROADCAST_INTERVAL = 1  # in seconds
 client_connected = False
 
-# AI Learning Data
-learning_data = {
-    "paddle1_y": paddle1_y,
-    "paddle2_y": paddle2_y,
-    "ball_x": ball_x,
-    "ball_y": ball_y,
-    "ball_dx": ball_dx,
-    "ball_dy": ball_dy,
-    "score1": score1,
-    "score2": score2
-}
-
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -74,15 +61,23 @@ def broadcast_server():
 def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
     client_connected = True
-    show_ready_screen("Player Connected! Ready to Start...")
-    time.sleep(2)  # brief delay before game starts
-    client_socket.send("READY".encode('utf-8'))  # Signal to player that the game is starting
+
+    # Initial handshake
+    client_socket.send("READY".encode('utf-8'))
+    client_ack = client_socket.recv(1024).decode('utf-8')
+    if client_ack == "ACK":
+        print("Client acknowledged, starting game...")
+    else:
+        print("Client did not acknowledge properly.")
+        return
+
     while True:
         try:
             # Receive paddle position from client
             data = client_socket.recv(1024).decode('utf-8')
             if data:
                 paddle2_y = int(data)
+                client_socket.send("ACK".encode('utf-8'))  # Acknowledge receipt of data
         except:
             break
 
@@ -90,6 +85,9 @@ def handle_client(client_socket):
         send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
         try:
             client_socket.send(send_data.encode('utf-8'))
+            server_ack = client_socket.recv(1024).decode('utf-8')
+            if server_ack != "ACK":
+                print("Failed to receive acknowledgment from client.")
         except:
             break
 
@@ -153,28 +151,6 @@ def show_waiting_screen(message):
     screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
     pygame.display.flip()
 
-def show_ready_screen(message):
-    screen.fill((0, 0, 0))
-    font = pygame.font.SysFont(None, 72)
-    text = font.render(message, True, (255, 255, 255))
-    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
-    pygame.display.flip()
-
-def ai_move_paddle():
-    global paddle1_y, ball_x, ball_y, learning_data
-    if ball_y > paddle1_y + PADDLE_HEIGHT // 2:
-        paddle1_y += PADDLE_SPEED
-    elif ball_y < paddle1_y + PADDLE_HEIGHT // 2:
-        paddle1_y -= PADDLE_SPEED
-    paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
-
-    # Save learning data
-    learning_data["paddle1_y"] = paddle1_y
-    learning_data["ball_x"] = ball_x
-    learning_data["ball_y"] = ball_y
-    with open("server_ai_learning.json", "w") as file:
-        json.dump(learning_data, file)
-
 def game_loop():
     global paddle1_y, client_connected
 
@@ -188,7 +164,14 @@ def game_loop():
                 return
 
         if client_connected:
-            ai_move_paddle()
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_UP]:
+                paddle1_y -= PADDLE_SPEED
+            if keys[pygame.K_DOWN]:
+                paddle1_y += PADDLE_SPEED
+
+            paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
+
             move_ball()
             draw_game()
         time.sleep(0.01)
