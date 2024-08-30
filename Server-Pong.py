@@ -71,8 +71,15 @@ def handle_client(client_socket):
         print("Client did not acknowledge properly.")
         return
 
-    # Wait a moment to ensure both sides are ready
+    # Wait for the client to confirm it's ready to start
     time.sleep(1)
+    client_socket.send("START".encode('utf-8'))
+    start_ack = client_socket.recv(1024).decode('utf-8')
+    if start_ack == "START_ACK":
+        print("Client is ready. Game is starting...")
+    else:
+        print("Client did not respond to start signal.")
+        return
 
     while True:
         try:
@@ -81,7 +88,8 @@ def handle_client(client_socket):
             if data:
                 paddle2_y = int(data)
                 client_socket.send("ACK".encode('utf-8'))  # Acknowledge receipt of data
-        except:
+        except Exception as e:
+            print(f"Error receiving data from client: {e}")
             break
 
         # Send ball position, paddle1 position, and scores to client
@@ -91,7 +99,8 @@ def handle_client(client_socket):
             server_ack = client_socket.recv(1024).decode('utf-8')
             if server_ack != "ACK":
                 print("Failed to receive acknowledgment from client.")
-        except:
+        except Exception as e:
+            print(f"Error sending data to client: {e}")
             break
 
 def start_server():
