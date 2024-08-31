@@ -13,9 +13,11 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
-PADDLE_SPEED = 25  # Increased paddle speed
-BALL_SPEED_X = 12  # Increased ball speed
-BALL_SPEED_Y = 12  # Increased ball speed
+PADDLE_SPEED = 15  # Initial paddle speed
+PADDLE_ACCELERATION = 0.3  # Acceleration for smooth paddle movement
+BALL_SPEED_X = 12  # Initial ball speed
+BALL_SPEED_Y = 12  # Initial ball speed
+BALL_SPEED_INCREASE = 1.2  # Speed multiplier for dynamic ball speed
 
 # Difficulty Scaling
 difficulty_increment = 1.5  # Faster speed increase per level
@@ -66,9 +68,13 @@ def move_ball():
     if ball_x <= PADDLE_WIDTH and paddle1_y < ball_y < paddle1_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
         adjust_ball_angle(paddle1_y, ball_y)
+        ball_dx *= BALL_SPEED_INCREASE
+        ball_dy *= BALL_SPEED_INCREASE
     if ball_x >= SCREEN_WIDTH - PADDLE_WIDTH - BALL_SIZE and paddle2_y < ball_y < paddle2_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
         adjust_ball_angle(paddle2_y, ball_y)
+        ball_dx *= BALL_SPEED_INCREASE
+        ball_dy *= BALL_SPEED_INCREASE
 
     # Ball goes out of bounds and score is updated
     if ball_x <= 0:
@@ -117,6 +123,7 @@ def ai_move_paddle():
         paddle1_y += PADDLE_SPEED
     elif ball_y < paddle1_y + PADDLE_HEIGHT // 2:
         paddle1_y -= PADDLE_SPEED
+
     # Ensure the paddle can move fully up and down
     paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
 
