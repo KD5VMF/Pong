@@ -2,8 +2,15 @@ import socket
 import pygame
 import time
 
-# Pygame Initialization
+# Game Initialization
 pygame.init()
+pygame.display.set_caption("Pong - Player")
+
+# Wait for IP and Port Input Before Showing the Game Screen
+SERVER_IP = input("Enter the server IP address: ")
+SERVER_PORT = int(input("Enter the server port: "))
+
+# Pygame Initialization (after IP and port input)
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
@@ -11,16 +18,12 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
-PADDLE_SPEED = 25  # Increased paddle speed
-
-pygame.display.set_caption("Pong - Player")
+PADDLE_SPEED = 15  # Initial paddle speed
+PADDLE_ACCELERATION = 0.3  # Acceleration for smooth paddle movement
+BALL_SPEED_INCREASE = 1.2  # Speed multiplier for dynamic ball speed
 
 # Paddle and Ball Positions
 paddle2_y = SCREEN_HEIGHT // 2 - PADDLE_HEIGHT // 2
-
-# Network Settings
-SERVER_IP = input("Enter the server IP address: ")
-SERVER_PORT = int(input("Enter the server port: "))
 
 def connect_to_server():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,7 +44,9 @@ def draw_scoreboard(score1, score2):
     screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 20))
 
 def game_loop(client_socket):
-    global paddle2_y
+    global paddle2_y, PADDLE_SPEED
+
+    paddle_velocity = 0
 
     while True:
         for event in pygame.event.get():
@@ -63,15 +68,21 @@ def game_loop(client_socket):
 
         ball_x, ball_y, paddle1_y, score1, score2 = map(int, data.split(','))
 
+        # Simple AI to follow the ball with smooth movement
         if ball_y > paddle2_y + PADDLE_HEIGHT // 2:
-            paddle2_y += PADDLE_SPEED
+            paddle_velocity = min(paddle_velocity + PADDLE_ACCELERATION, PADDLE_SPEED)
         elif ball_y < paddle2_y + PADDLE_HEIGHT // 2:
-            paddle2_y -= PADDLE_SPEED
+            paddle_velocity = max(paddle_velocity - PADDLE_ACCELERATION, -PADDLE_SPEED)
+        else:
+            paddle_velocity = 0
 
+        paddle2_y += paddle_velocity
         paddle2_y = max(0, min(paddle2_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
 
+        # Send the updated paddle position to server
         client_socket.send(str(paddle2_y).encode('utf-8'))
 
+        # Draw the updated game state
         draw_game(ball_x, ball_y, paddle1_y, paddle2_y, score1, score2)
 
 if __name__ == "__main__":
