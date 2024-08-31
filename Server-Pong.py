@@ -150,6 +150,8 @@ def handle_client(client_socket):
             # Receive updated paddle position from client
             data = client_socket.recv(1024).decode('utf-8')
             if data:
+                if data == "ACK":
+                    continue  # Ignore ACK messages
                 paddle2_y = int(float(data))  # Properly handle the float value
 
                 # Ensure the player's paddle can move all the way to the top and bottom
