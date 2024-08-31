@@ -58,6 +58,10 @@ def game_loop(client_socket):
             print("Connection lost to the server.")
             break
 
+        # Skip any acknowledgment messages
+        if data == "ACK":
+            continue
+
         ball_x, ball_y, paddle1_y, score1, score2 = map(int, data.split(','))
 
         # Simple AI to follow the ball
