@@ -13,9 +13,9 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
-PADDLE_SPEED = 20  # Increased paddle speed
-BALL_SPEED_X = 10  # Increased ball speed
-BALL_SPEED_Y = 10  # Increased ball speed
+PADDLE_SPEED = 20  # Initial paddle speed
+BALL_SPEED_X = 10  # Initial ball speed
+BALL_SPEED_Y = 10  # Initial ball speed
 
 # Difficulty Scaling
 difficulty_increment = 1.0  # Faster speed increase per level
@@ -39,18 +39,19 @@ score2 = 0
 SERVER_PORT = 12345
 client_connected = False
 
-def get_ip_address():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def get_lan_ip_address():
     try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = '127.0.0.1'
-    finally:
+        # Create a socket and attempt to connect to a common LAN address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # Using Google's DNS server as a safe bet for a LAN IP
+        lan_ip = s.getsockname()[0]
         s.close()
-    return ip
+        return lan_ip
+    except Exception as e:
+        print(f"Failed to get LAN IP address: {e}")
+        return '127.0.0.1'  # Fallback to localhost if no LAN IP is available
 
-SERVER_IP = get_ip_address()
+SERVER_IP = get_lan_ip_address()
 
 def move_ball():
     global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y, score1, score2
@@ -105,7 +106,6 @@ def ai_move_paddle():
         paddle1_y -= PADDLE_SPEED
     # Ensure the paddle can move fully up and down
     paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
-    print(f"Paddle1 Y Position: {paddle1_y}")  # Debugging info
 
 def increase_difficulty():
     global PADDLE_SPEED, BALL_SPEED_X, BALL_SPEED_Y, ai_reaction_time
@@ -152,9 +152,8 @@ def handle_client(client_socket):
             if data:
                 paddle2_y = int(float(data))  # Properly handle the float value
 
-                # Ensure the player's paddle can move all the way to the bottom
+                # Ensure the player's paddle can move all the way to the top and bottom
                 paddle2_y = max(0, min(paddle2_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
-                print(f"Paddle2 Y Position: {paddle2_y}")  # Debugging info
 
             # Always send acknowledgment after receiving data
             client_socket.send("ACK".encode('utf-8'))
