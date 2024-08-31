@@ -13,15 +13,13 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
-PADDLE_SPEED = 15  # Initial paddle speed
-PADDLE_ACCELERATION = 0.3  # Acceleration for smooth paddle movement
-BALL_SPEED_X = 12  # Initial ball speed
-BALL_SPEED_Y = 12  # Initial ball speed
-BALL_SPEED_INCREASE = 1.2  # Speed multiplier for dynamic ball speed
+INITIAL_PADDLE_SPEED = 20
+INITIAL_BALL_SPEED_X = 10
+INITIAL_BALL_SPEED_Y = 10
 
 # Difficulty Scaling
-difficulty_increment = 1.5  # Faster speed increase per level
-ai_reaction_time = 0.004  # Reduced AI reaction time for faster response
+difficulty_increment = 1.2  # Faster speed increase per level
+ai_reaction_time = 0.005  # AI reaction time for faster response
 
 pygame.display.set_caption("Pong - Server")
 
@@ -30,12 +28,14 @@ paddle1_y = SCREEN_HEIGHT // 2 - PADDLE_HEIGHT // 2
 paddle2_y = SCREEN_HEIGHT // 2 - PADDLE_HEIGHT // 2
 ball_x = SCREEN_WIDTH // 2
 ball_y = SCREEN_HEIGHT // 2
-ball_dx = BALL_SPEED_X
-ball_dy = BALL_SPEED_Y
+ball_dx = INITIAL_BALL_SPEED_X
+ball_dy = INITIAL_BALL_SPEED_Y
+paddle_speed = INITIAL_PADDLE_SPEED
 
 # Scores
 score1 = 0
 score2 = 0
+current_level = 1
 
 # Network Settings
 SERVER_PORT = 12345
@@ -43,6 +43,7 @@ client_connected = False
 
 def get_lan_ip_address():
     try:
+        # Create a socket and attempt to connect to a common LAN address
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))  # Using Google's DNS server as a safe bet for a LAN IP
         lan_ip = s.getsockname()[0]
@@ -55,53 +56,36 @@ def get_lan_ip_address():
 SERVER_IP = get_lan_ip_address()
 
 def move_ball():
-    global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y, score1, score2
+    global ball_x, ball_y, ball_dx, ball_dy, paddle1_y, paddle2_y, score1, score2, current_level
 
     ball_x += ball_dx
     ball_y += ball_dy
 
-    # Ball bounces off the top and bottom of the screen
     if ball_y <= 0 or ball_y >= SCREEN_HEIGHT - BALL_SIZE:
         ball_dy = -ball_dy
 
-    # Ball bounces off the paddles
+    # Check collision with paddles and adjust ball direction
     if ball_x <= PADDLE_WIDTH and paddle1_y < ball_y < paddle1_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
-        adjust_ball_angle(paddle1_y, ball_y)
-        ball_dx *= BALL_SPEED_INCREASE
-        ball_dy *= BALL_SPEED_INCREASE
     if ball_x >= SCREEN_WIDTH - PADDLE_WIDTH - BALL_SIZE and paddle2_y < ball_y < paddle2_y + PADDLE_HEIGHT:
         ball_dx = -ball_dx
-        adjust_ball_angle(paddle2_y, ball_y)
-        ball_dx *= BALL_SPEED_INCREASE
-        ball_dy *= BALL_SPEED_INCREASE
 
-    # Ball goes out of bounds and score is updated
+    # Check if ball goes out of bounds and update score
     if ball_x <= 0:
         score2 += 1
         reset_ball()
-        increase_difficulty()
+        check_winner()
     if ball_x >= SCREEN_WIDTH - BALL_SIZE:
         score1 += 1
         reset_ball()
-        increase_difficulty()
-
-def adjust_ball_angle(paddle_y, ball_y):
-    # Adjust the ball's angle based on where it hits the paddle
-    relative_intersect_y = (paddle_y + PADDLE_HEIGHT / 2) - ball_y
-    normalized_intersect_y = relative_intersect_y / (PADDLE_HEIGHT / 2)
-    bounce_angle = normalized_intersect_y * 75  # Angle in degrees
-
-    # Convert angle to radians and calculate new velocity components
-    ball_dy = -BALL_SPEED_Y * normalized_intersect_y
-    if abs(ball_dy) < 1:  # Prevents the ball from moving horizontally only
-        ball_dy = random.choice([-1, 1])
+        check_winner()
 
 def reset_ball():
-    global ball_x, ball_y, ball_dx, ball_dy
+    global ball_x, ball_y, ball_dx, ball_dy, paddle_speed
     ball_x, ball_y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-    ball_dx = random.choice([BALL_SPEED_X, -BALL_SPEED_X])
-    ball_dy = random.choice([BALL_SPEED_Y, -BALL_SPEED_Y])
+    ball_dx = random.choice([INITIAL_BALL_SPEED_X, -INITIAL_BALL_SPEED_X]) * difficulty_increment
+    ball_dy = random.choice([INITIAL_BALL_SPEED_Y, -INITIAL_BALL_SPEED_Y]) * difficulty_increment
+    paddle_speed = INITIAL_PADDLE_SPEED * difficulty_increment
 
 def draw_game():
     screen.fill((0, 0, 0))
@@ -113,32 +97,48 @@ def draw_game():
 
 def draw_scoreboard():
     font = pygame.font.SysFont(None, 48)
-    score_text = font.render(f"Server: {score1}  Player: {score2}", True, (255, 255, 255))
+    score_text = font.render(f"Server: {score1}  Player: {score2}  Level: {current_level}", True, (255, 255, 255))
     screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 20))
 
 def ai_move_paddle():
     global paddle1_y, ball_y
     time.sleep(ai_reaction_time)  # Simulate AI reaction time
     if ball_y > paddle1_y + PADDLE_HEIGHT // 2:
-        paddle1_y += PADDLE_SPEED
+        paddle1_y += paddle_speed
     elif ball_y < paddle1_y + PADDLE_HEIGHT // 2:
-        paddle1_y -= PADDLE_SPEED
-
+        paddle1_y -= paddle_speed
     # Ensure the paddle can move fully up and down
     paddle1_y = max(0, min(paddle1_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
 
+def check_winner():
+    global current_level, score1, score2
+
+    if score1 >= 25 or score2 >= 25:
+        winner = "Server" if score1 > score2 else "Player"
+        show_winner(winner)
+        score1, score2 = 0, 0
+        current_level += 1
+        increase_difficulty()
+
+def show_winner(winner):
+    screen.fill((0, 0, 0))
+    font = pygame.font.SysFont(None, 72)
+    text = font.render(f"{winner} Wins! Level Up!", True, (255, 255, 255))
+    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
+    pygame.display.flip()
+    time.sleep(3)  # Display winner for 3 seconds before moving to the next level
+
 def increase_difficulty():
-    global PADDLE_SPEED, BALL_SPEED_X, BALL_SPEED_Y, ai_reaction_time
-    PADDLE_SPEED += difficulty_increment
-    BALL_SPEED_X += difficulty_increment
-    BALL_SPEED_Y += difficulty_increment
-    ai_reaction_time = max(0.001, ai_reaction_time - 0.001)  # Faster AI reaction with a limit
+    global difficulty_increment, ai_reaction_time
+    difficulty_increment += 0.1  # Increase the difficulty increment
+    ai_reaction_time = max(0.002, ai_reaction_time - 0.001)  # Faster AI reaction with a limit
 
 def handle_client(client_socket):
     global paddle2_y, ball_x, ball_y, ball_dx, ball_dy, score1, score2, client_connected
     client_connected = True
 
     try:
+        # Initial handshake
         client_socket.send("READY".encode('utf-8'))
         client_ack = client_socket.recv(1024).decode('utf-8')
         if client_ack == "ACK":
@@ -147,6 +147,7 @@ def handle_client(client_socket):
             print("Client did not acknowledge properly.")
             return
 
+        # Wait for the client to confirm it's ready to start
         time.sleep(1)
         client_socket.send("START".encode('utf-8'))
         start_ack = client_socket.recv(1024).decode('utf-8')
@@ -157,22 +158,28 @@ def handle_client(client_socket):
             return
 
         while True:
+            # Move the ball and server paddle
             move_ball()
             ai_move_paddle()
 
+            # Send ball position, paddle1 position, and scores to client
             send_data = f"{ball_x},{ball_y},{paddle1_y},{score1},{score2}"
             client_socket.send(send_data.encode('utf-8'))
 
+            # Receive updated paddle position from client
             data = client_socket.recv(1024).decode('utf-8')
             if data:
                 if data == "ACK":
-                    continue
-                paddle2_y = int(float(data))
+                    continue  # Ignore ACK messages
+                paddle2_y = int(float(data))  # Properly handle the float value
 
+                # Ensure the player's paddle can move all the way to the top and bottom
                 paddle2_y = max(0, min(paddle2_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
 
+            # Always send acknowledgment after receiving data
             client_socket.send("ACK".encode('utf-8'))
 
+            # Draw the game screen
             draw_game()
 
     except Exception as e:
@@ -216,7 +223,7 @@ def game_loop():
 
         if client_connected:
             draw_game()
-        time.sleep(0.005)
+        time.sleep(0.005)  # Reduced delay for faster game loop
 
 if __name__ == "__main__":
     server_thread = threading.Thread(target=start_server)
