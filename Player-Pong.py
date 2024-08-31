@@ -11,7 +11,7 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 PADDLE_WIDTH = 15
 PADDLE_HEIGHT = 100
 BALL_SIZE = 20
-PADDLE_SPEED = 20  # Initial paddle speed
+PADDLE_SPEED = 25  # Increased paddle speed
 
 pygame.display.set_caption("Pong - Player")
 
@@ -58,32 +58,26 @@ def game_loop(client_socket):
             print("Connection lost to the server.")
             break
 
-        # Skip any acknowledgment messages
         if data == "ACK":
             continue
 
         ball_x, ball_y, paddle1_y, score1, score2 = map(int, data.split(','))
 
-        # Simple AI to follow the ball
         if ball_y > paddle2_y + PADDLE_HEIGHT // 2:
             paddle2_y += PADDLE_SPEED
         elif ball_y < paddle2_y + PADDLE_HEIGHT // 2:
             paddle2_y -= PADDLE_SPEED
 
-        # Ensure the paddle can move fully up and down
         paddle2_y = max(0, min(paddle2_y, SCREEN_HEIGHT - PADDLE_HEIGHT))
 
-        # Send the updated paddle position to server
         client_socket.send(str(paddle2_y).encode('utf-8'))
 
-        # Draw the updated game state
         draw_game(ball_x, ball_y, paddle1_y, paddle2_y, score1, score2)
 
 if __name__ == "__main__":
     print("Player starting up...")
     client_socket = connect_to_server()
 
-    # Initial handshake
     if client_socket.recv(1024).decode('utf-8') == "READY":
         client_socket.send("ACK".encode('utf-8'))
         if client_socket.recv(1024).decode('utf-8') == "START":
